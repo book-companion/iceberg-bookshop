@@ -1,0 +1,21 @@
+# The Apache reference REST catalog. It is a JdbcCatalog backed by SQLite --
+# `docker compose logs catalog` says so itself, which is chapter 5's punchline.
+#
+# WAREHOUSE_DIR is written into .env by `make up`. The container mounts the
+# warehouse at the SAME absolute path the host uses, because the catalog hands
+# clients the warehouse path it was configured with, and a client running on
+# the host has to be able to write to it.
+services:
+  catalog:
+    image: apache/iceberg-rest-fixture:1.10.1
+    container_name: iceberg-bookshop-catalog
+    ports:
+      - "8181:8181"
+    environment:
+      CATALOG_WAREHOUSE: file://${WAREHOUSE_DIR}
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      CATALOG_URI: jdbc:sqlite:file:/catalog/bookshop.db
+      CATALOG_JDBC_INITIALIZE: "true"
+    volumes:
+      - ${WAREHOUSE_DIR}:${WAREHOUSE_DIR}
+      - ./catalog:/catalog
