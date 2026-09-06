@@ -1,0 +1,331 @@
+# The Book 2 platform — Apache Iceberg in the Wild. One compose file, added to
+# one stage at a time as the chapters need it; each stage is the lesson of the
+# chapter that introduces it.
+#
+#   stage 1: object store + the reference REST catalog ON object storage
+#            (Book 1 ran the same catalog on a bind-mounted directory)
+#
+# Host clients (Spark, DuckDB, PyIceberg) reach the store at localhost:8333;
+# containers reach it by service name. Same store, two addresses — a client
+# on the host must set its own s3.endpoint rather than trust the catalog's.
+
+name: iceberg-bookshop-book2
+
+services:
+  # SeaweedFS in `mini` mode: master + volume + filer + S3 gateway in one
+  # process. The IAM file defines the lab key and an STS role so a catalog can
+  # vend short-lived credentials (stage 2). MinIO is not here because its
+  # Docker image stopped in Sep 2025 and the repo was archived in Apr 2026.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.45
+    container_name: book2-seaweedfs
+    command:
+      - mini
+      - -dir=/data
+      - -bucket=warehouse
+      - -s3.config=/etc/seaweedfs/iam.json
+      - -s3.iam.config=/etc/seaweedfs/iam.json
+    volumes:
+      - ./seaweedfs-iam.json:/etc/seaweedfs/iam.json:ro
+      - seaweedfs-data:/data
+    ports:
+      - "8333:8333"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8333/status"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  # The Apache reference REST catalog (JdbcCatalog over SQLite behind Jetty),
+  # exactly Book 1's container, but with its FileIO pointed at S3 instead of a
+  # local directory. Env-var mapping: CATALOG_x maps to Iceberg property x,
+  # `__` to `-`, `_` to `.`.
+  catalog:
+    image: apache/iceberg-rest-fixture:1.10.1
+    container_name: book2-catalog
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://seaweedfs:8333
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      # A FILE-backed SQLite on a volume, not Book 1's `?mode=memory`: the
+      # in-memory database was wedged by Flink's concurrent commits (stage 4)
+      # and every later query failed with UncheckedSQLException until a
+      # restart — which, in memory mode, also forgets every table.
+      CATALOG_URI: jdbc:sqlite:file:/catalog/fixture.db
+      CATALOG_JDBC_INITIALIZE: "true"
+      AWS_ACCESS_KEY_ID: lab-access-key
+      AWS_SECRET_ACCESS_KEY: lab-secret-key
+      AWS_REGION: us-east-1
+    volumes:
+      # a bind mount, not a named volume: the image runs as iceberg:iceberg and
+      # cannot open a SQLite file on a root-owned volume (SQLITE_CANTOPEN)
+      - ./fixture-catalog:/catalog
+    ports:
+      - "8181:8181"
+
+  # ------------------------------------------------------------ stage 2
+  # Two production catalogs beside the fixture, each with a real database
+  # behind it. Host ports: fixture 8181, Polaris 8281 (+8282 health/admin),
+  # Lakekeeper 8381. One PostgreSQL holds both catalogs' metadata.
+  postgres:
+    image: postgres:18
+    container_name: book2-postgres
+    # wal_level=logical: Debezium (stage 4) reads the bookshop's WAL. The
+    # default is `replica`, and the connector refuses to start on it.
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  # Polaris needs its realm bootstrapped in the database before the server
+  # starts (the admin tool does that, once), and the server is told the same
+  # root credential so it can serve the realm.
+  polaris-bootstrap:
+    image: apache/polaris-admin-tool:1.7.0
+    container_name: book2-polaris-bootstrap
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POLARIS_PERSISTENCE_TYPE: relational-jdbc
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/polaris
+      QUARKUS_DATASOURCE_USERNAME: postgres
+      QUARKUS_DATASOURCE_PASSWORD: postgres
+    command: ["bootstrap", "--realm=POLARIS", "--credential=POLARIS,root,s3cr3t"]
+
+  polaris:
+    image: apache/polaris:1.7.0
+    container_name: book2-polaris
+    depends_on:
+      postgres:
+        condition: service_healthy
+      polaris-bootstrap:
+        condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      POLARIS_PERSISTENCE_TYPE: relational-jdbc
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/polaris
+      QUARKUS_DATASOURCE_USERNAME: postgres
+      QUARKUS_DATASOURCE_PASSWORD: postgres
+      POLARIS_REALM_CONTEXT_REALMS: POLARIS
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      QUARKUS_OTEL_SDK_DISABLED: "true"
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": '["FILE","S3"]'
+      polaris.readiness.ignore-severe-issues: "true"
+      # The server's own S3 identity, for the metadata it writes itself.
+      AWS_ACCESS_KEY_ID: lab-access-key
+      AWS_SECRET_ACCESS_KEY: lab-secret-key
+      AWS_REGION: us-east-1
+    ports:
+      - "8281:8181"
+      - "8282:8182"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  # Lakekeeper: run the migrations once, then serve. Bootstrap (accepting the
+  # terms) and warehouse creation are HTTP calls made by the stage 2 probe so
+  # they are visible, not hidden in a curl container.
+  lakekeeper-migrate:
+    image: quay.io/lakekeeper/catalog:v0.13.3
+    container_name: book2-lakekeeper-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LAKEKEEPER__PG_ENCRYPTION_KEY: this-is-not-secure-lab-key
+      LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://postgres:postgres@postgres:5432/lakekeeper
+      LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://postgres:postgres@postgres:5432/lakekeeper
+    command: ["migrate"]
+
+  lakekeeper:
+    image: quay.io/lakekeeper/catalog:v0.13.3
+    container_name: book2-lakekeeper
+    depends_on:
+      lakekeeper-migrate:
+        condition: service_completed_successfully
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      LAKEKEEPER__PG_ENCRYPTION_KEY: this-is-not-secure-lab-key
+      LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://postgres:postgres@postgres:5432/lakekeeper
+      LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://postgres:postgres@postgres:5432/lakekeeper
+      # LAKEKEEPER__BASE_URI is deliberately NOT set. Lakekeeper puts it into the
+      # REST config response as overrides.uri, and clients honour that over the
+      # URI they were given — so a value right for the host sent Trino (a
+      # container) to localhost:8381 and it got "connection refused". Unset, the
+      # catalog answers with whatever address the client used to reach it.
+      RUST_LOG: info
+    command: ["serve"]
+    ports:
+      - "8381:8181"
+    healthcheck:
+      test: ["CMD", "/home/nonroot/lakekeeper", "healthcheck"]
+      interval: 2s
+      timeout: 10s
+      retries: 30
+      start_period: 3s
+
+  # THE TWO-ADDRESS PROBLEM, solved inside the compose file. Lakekeeper stores
+  # ONE storage endpoint and vends it to every client. Containers know the
+  # store as seaweedfs:8333, the host as localhost:8333. This sidecar shares
+  # Lakekeeper's network namespace and forwards ITS 127.0.0.1:8333 to the
+  # store, so a warehouse whose endpoint is http://localhost:8333 is valid for
+  # the catalog and for every host client, with no shim and no /etc/hosts edit.
+  # An engine container that later loads such a table needs the same sidecar.
+  lakekeeper-s3-loopback:
+    image: alpine/socat:1.8.0.3
+    container_name: book2-lakekeeper-s3-loopback
+    network_mode: "service:lakekeeper"
+    depends_on:
+      lakekeeper:
+        condition: service_started
+    command: ["tcp-listen:8333,fork,reuseaddr", "tcp:seaweedfs:8333"]
+
+  # ------------------------------------------------------------ stage 3
+  # Trino, single node, the engine Book 1 never ran. One catalog properties
+  # file per catalog under ./trino/catalog; the image's own defaults otherwise
+  # (read its jvm.config and the measured memory from the record).
+  trino:
+    image: trinodb/trino:483
+    container_name: book2-trino
+    depends_on:
+      catalog:
+        condition: service_started
+      polaris:
+        condition: service_healthy
+      lakekeeper:
+        condition: service_healthy
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  # ------------------------------------------------------------ stage 4
+  # The streaming writer Book 1 could only describe. Flink 2.1.3 (the newest
+  # line Iceberg 1.11.0 ships a runtime for) with the runtime + AWS bundle
+  # dropped into /opt/flink/lib (run ./fetch-jars.sh first). SQL scripts in
+  # ./flink/sql are run through the SQL client inside the jobmanager.
+  flink-jobmanager:
+    image: flink:2.1.3-scala_2.12-java21
+    container_name: book2-flink-jm
+    command: jobmanager
+    depends_on:
+      catalog:
+        condition: service_started
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1g
+        execution.checkpointing.interval: 10s
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+      AWS_ACCESS_KEY_ID: lab-access-key
+      AWS_SECRET_ACCESS_KEY: lab-secret-key
+      AWS_REGION: us-east-1
+    volumes:
+      - ./flink/lib/iceberg-flink-runtime-2.1-1.11.0.jar:/opt/flink/lib/iceberg-flink-runtime-2.1-1.11.0.jar:ro
+      - ./flink/lib/iceberg-aws-bundle-1.11.0.jar:/opt/flink/lib/iceberg-aws-bundle-1.11.0.jar:ro
+      - ./flink/lib/hadoop-client-api-3.4.1.jar:/opt/flink/lib/hadoop-client-api-3.4.1.jar:ro
+      - ./flink/lib/hadoop-client-runtime-3.4.1.jar:/opt/flink/lib/hadoop-client-runtime-3.4.1.jar:ro
+      - ./flink/lib/flink-sql-connector-kafka-5.0.0-2.1.jar:/opt/flink/lib/flink-sql-connector-kafka-5.0.0-2.1.jar:ro
+      - ./flink/sql:/scripts:ro
+    ports:
+      - "8081:8081"
+
+  flink-taskmanager:
+    image: flink:2.1.3-scala_2.12-java21
+    container_name: book2-flink-tm
+    command: taskmanager
+    depends_on:
+      - flink-jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 2g
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+      AWS_ACCESS_KEY_ID: lab-access-key
+      AWS_SECRET_ACCESS_KEY: lab-secret-key
+      AWS_REGION: us-east-1
+    volumes:
+      - ./flink/lib/iceberg-flink-runtime-2.1-1.11.0.jar:/opt/flink/lib/iceberg-flink-runtime-2.1-1.11.0.jar:ro
+      - ./flink/lib/iceberg-aws-bundle-1.11.0.jar:/opt/flink/lib/iceberg-aws-bundle-1.11.0.jar:ro
+      - ./flink/lib/hadoop-client-api-3.4.1.jar:/opt/flink/lib/hadoop-client-api-3.4.1.jar:ro
+      - ./flink/lib/hadoop-client-runtime-3.4.1.jar:/opt/flink/lib/hadoop-client-runtime-3.4.1.jar:ro
+      - ./flink/lib/flink-sql-connector-kafka-5.0.0-2.1.jar:/opt/flink/lib/flink-sql-connector-kafka-5.0.0-2.1.jar:ro
+
+  # Kafka 4.3.1 in KRaft mode, one node doing both roles. Containers use
+  # kafka:9092; the host uses localhost:29092.
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: book2-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+    ports:
+      - "29092:29092"
+
+  # Debezium's Kafka Connect distribution (Postgres connector included). No
+  # Iceberg sink ships with it, and no 1.11.0 build of one is published.
+  connect:
+    image: quay.io/debezium/connect:3.6.2.Final
+    container_name: book2-connect
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+      KAFKA_HEAP_OPTS: -Xmx1g -Xms512m
+      # for an Iceberg sink's S3FileIO, if one is installed under ./connect/plugins
+      AWS_ACCESS_KEY_ID: lab-access-key
+      AWS_SECRET_ACCESS_KEY: lab-secret-key
+      AWS_REGION: us-east-1
+    ports:
+      - "8083:8083"
+
+volumes:
+  seaweedfs-data:
+  postgres-data:

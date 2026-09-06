@@ -1,9 +1,12 @@
 .venv/
-warehouse/
-catalog/
+book-1/warehouse/
+book-1/catalog/
 labs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .env
 *.egg-info/
+book-2/flink/lib/*.jar
+book-2/fixture-catalog/
+book-2/connect/plugins/

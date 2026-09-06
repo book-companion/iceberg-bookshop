@@ -1,12 +1,20 @@
 # iceberg-bookshop
 
-The clone-and-run companion to **_Apache Iceberg from the Ground Up_** by Simon Sarkar.
+The clone-and-run companion to the **Apache Iceberg** books by Simon Sarkar:
 
-An Apache Iceberg lakehouse for a fictional bookshop — a REST catalog, a warehouse,
-and 50,000 orders — plus scripts that reproduce the book's load-bearing findings on
-your own machine.
+| Book | Folder | What it stands up |
+|---|---|---|
+| *Apache Iceberg from the Ground Up* | `book-1/` | the reference REST catalog on a local directory, 50,000 orders, three verify scripts |
+| *Apache Iceberg in the Wild* | `book-2/` | the whole platform: object storage, three catalogs, Trino, Flink, Kafka and Debezium |
 
-Everything here is pinned to the versions the book was written and run against.
+An Apache Iceberg lakehouse for a fictional bookshop, plus scripts that reproduce
+each book's load-bearing findings on your own machine. Everything is pinned to
+the versions the books were written and run against. The `bookshop` package at
+the root — the canonical schemas with the field IDs the books print, the seed,
+the catalog and Spark helpers — is shared by every book.
+
+**Book 1's commands are unchanged**: run them at the root exactly as its chapters
+print them. Book 2's live under `book-2/` (`make -C book-2 help`).
 
 ## Quick start
 
@@ -77,9 +85,9 @@ the wrong answer, and you would supply a secret instead.
 ## Layout
 
 ```
-bookshop/     catalog helpers, canonical schemas, Spark session, the seed
-verify/       one script per group of chapters
-docker-compose.yml
+bookshop/            shared: catalog helpers, canonical schemas, Spark session, the seed
+book-1/              Book 1's docker-compose.yml, verify/ (one script per group of chapters), Makefile
+book-2/              Book 2's platform: docker-compose.yml, configs, flink/sql, verify/, Makefile — see book-2/README.md
 ```
 
 `bookshop/schema.py` holds the field IDs the book prints, so a table you create here
