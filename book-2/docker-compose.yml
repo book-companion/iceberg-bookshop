@@ -161,14 +161,38 @@ services:
       LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://postgres:postgres@postgres:5432/lakekeeper
     command: ["migrate"]
 
+  # THE TWO-ADDRESS PROBLEM, solved inside the compose file. Lakekeeper stores
+  # ONE storage endpoint and vends it to every client. Containers know the
+  # store as seaweedfs:8333, the host as localhost:8333. A socat forwarder and
+  # the catalog SHARE a network namespace, so a warehouse whose endpoint is
+  # http://localhost:8333 is valid for the catalog and for every host client.
+  #
+  # The forwarder OWNS the namespace and the catalog joins it, not the other
+  # way round: a container in network_mode "service:X" dies with X, and the
+  # first arrangement (catalog owns, forwarder joins) meant every catalog
+  # restart silently killed credential vending until the forwarder was
+  # restarted too. This way, restarting the catalog costs nothing. The
+  # service is named `lakekeeper` so that containers reach the catalog as
+  # lakekeeper:8181, which lands in the shared namespace.
   lakekeeper:
-    image: quay.io/lakekeeper/catalog:v0.13.3
+    image: alpine/socat:1.8.0.3
     container_name: book2-lakekeeper
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    command: ["tcp-listen:8333,fork,reuseaddr", "tcp:seaweedfs:8333"]
+    ports:
+      - "8381:8181"
+
+  lakekeeper-server:
+    image: quay.io/lakekeeper/catalog:v0.13.3
+    container_name: book2-lakekeeper-server
+    network_mode: "service:lakekeeper"
     depends_on:
       lakekeeper-migrate:
         condition: service_completed_successfully
-      seaweedfs:
-        condition: service_healthy
+      lakekeeper:
+        condition: service_started
     environment:
       LAKEKEEPER__PG_ENCRYPTION_KEY: this-is-not-secure-lab-key
       LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://postgres:postgres@postgres:5432/lakekeeper
@@ -180,30 +204,12 @@ services:
       # catalog answers with whatever address the client used to reach it.
       RUST_LOG: info
     command: ["serve"]
-    ports:
-      - "8381:8181"
     healthcheck:
       test: ["CMD", "/home/nonroot/lakekeeper", "healthcheck"]
       interval: 2s
       timeout: 10s
       retries: 30
       start_period: 3s
-
-  # THE TWO-ADDRESS PROBLEM, solved inside the compose file. Lakekeeper stores
-  # ONE storage endpoint and vends it to every client. Containers know the
-  # store as seaweedfs:8333, the host as localhost:8333. This sidecar shares
-  # Lakekeeper's network namespace and forwards ITS 127.0.0.1:8333 to the
-  # store, so a warehouse whose endpoint is http://localhost:8333 is valid for
-  # the catalog and for every host client, with no shim and no /etc/hosts edit.
-  # An engine container that later loads such a table needs the same sidecar.
-  lakekeeper-s3-loopback:
-    image: alpine/socat:1.8.0.3
-    container_name: book2-lakekeeper-s3-loopback
-    network_mode: "service:lakekeeper"
-    depends_on:
-      lakekeeper:
-        condition: service_started
-    command: ["tcp-listen:8333,fork,reuseaddr", "tcp:seaweedfs:8333"]
 
   # ------------------------------------------------------------ stage 3
   # Trino, single node, the engine Book 1 never ran. One catalog properties
@@ -217,7 +223,7 @@ services:
         condition: service_started
       polaris:
         condition: service_healthy
-      lakekeeper:
+      lakekeeper-server:
         condition: service_healthy
     volumes:
       - ./trino/catalog:/etc/trino/catalog:ro

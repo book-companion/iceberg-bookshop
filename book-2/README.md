@@ -23,7 +23,7 @@ on the host.
 | Reference REST catalog, on object storage | `apache/iceberg-rest-fixture:1.10.1` | 8181 | 1 |
 | PostgreSQL 18 (catalog databases and the bookshop source) | `postgres:18` | 5432 | 3 |
 | Apache Polaris | `apache/polaris:1.7.0` | 8281, 8282 | 3 |
-| Lakekeeper (with a loopback sidecar for its storage endpoint) | `quay.io/lakekeeper/catalog:v0.13.3` | 8381 | 3 |
+| Lakekeeper (joined to a socat forwarder's network namespace, so its one storage endpoint is valid everywhere) | `quay.io/lakekeeper/catalog:v0.13.3` | 8381 | 3 |
 | Trino | `trinodb/trino:483` | 8080 | 5 |
 | Flink (jobmanager + taskmanager) | `flink:2.1.3-scala_2.12-java21` + Iceberg 1.11.0 runtime | 8081 | 11 |
 | Kafka (KRaft, one node) | `apache/kafka:4.3.1` | 29092 | 11, 12 |
