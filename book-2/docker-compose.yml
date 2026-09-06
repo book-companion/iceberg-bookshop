@@ -332,6 +332,20 @@ services:
     ports:
       - "8083:8083"
 
+  # A counting reverse proxy in front of the object store (chapters 2 and 6).
+  # Point a client's s3.endpoint at localhost:8334 and every request it makes
+  # is a line in `docker exec book2-s3-counter cat /var/log/nginx/s3.log`.
+  s3-counter:
+    image: nginx:latest
+    container_name: book2-s3-counter
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    volumes:
+      - ./nginx/s3-counter.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8334:8334"
+
 volumes:
   seaweedfs-data:
   postgres-data:

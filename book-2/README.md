@@ -53,3 +53,6 @@ condition it did not honour.
 | `flink/sql/*.sql` | Flink SQL for the upsert, streaming and CDC runs (`sql-client.sh -f /scripts/<file>` inside the jobmanager) |
 | `fetch-jars.sh` | the Flink runtime, AWS bundle, Hadoop client and Kafka connector jars, from Maven Central |
 | `verify/01_platform.py` | chapter 1: version manifest, then four engines agreeing on one table |
+| `nginx/s3-counter.conf` | the counting proxy in front of the object store (chapters 2 and 6): every S3 request a client makes, logged |
+| `bench/table_design.py` | chapter 6: three workloads built two ways, measured under the pre-warm / interleave / median protocol |
+| `compatibility/` | chapter 5: the generated engine certification matrix, dated, regenerated on every version bump |
