@@ -26,7 +26,16 @@ clean:  ## Stop the platform and delete all data
 	docker compose down -v
 	rm -rf fixture-catalog
 
+health:  ## Chapter 13: the table-health pack over the bookshop namespace (NS=... to change)
+	$(PY) health/table_health.py $(or $(NS),bookshop) --store
+
+cost:  ## Chapter 18: the cost model with default inputs (pass ARGS="--checkpoint-s 30 ...")
+	$(PY) cost/cost_model.py $(ARGS)
+
+game-day:  ## Chapter 16: drop and recover a namespace from its metadata (NS=...)
+	$(PY) dr/game_day.py $(or $(NS),bookshop)
+
 verify:  ## Run every verification script
 	@for f in verify/*.py; do echo "\n===== book-2/$$f ====="; $(PY) $$f || exit 1; done
 
-.PHONY: help jars up down clean verify
+.PHONY: help jars up down clean verify health cost game-day

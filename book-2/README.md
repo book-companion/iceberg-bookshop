@@ -56,3 +56,14 @@ condition it did not honour.
 | `nginx/s3-counter.conf` | the counting proxy in front of the object store (chapters 2 and 6): every S3 request a client makes, logged |
 | `bench/table_design.py` | chapter 6: three workloads built two ways, measured under the pre-warm / interleave / median protocol |
 | `compatibility/` | chapter 5: the generated engine certification matrix, dated, regenerated on every version bump |
+| `lib/platform.py` | shared plumbing: the Spark session on the reference catalog, the store client, the request counter, `psql` |
+| `design/skew.sql` | chapter 7: the skew diagnosis from metadata |
+| `maintenance/` | chapter 8: the compaction decision tree, the candidate prediction query, the fleet score |
+| `health/` | chapter 9's planning probe; chapter 13's table-health pack (`table_health.py <ns> --store`) and its alert-rule views |
+| `policies/retention.sql` | chapter 10: the three retention classes, tags and branches, and the no-argument expiry |
+| `streaming/`, `flink/sql/stream_*.sql` | chapter 11: the two streaming writers, the maintenance schedule and the runbook |
+| `cdc/` | chapter 12: the convergence test (`convergence_test.py`) and the curated table's merge and watermark |
+| `runbooks/` | chapter 14: the eight incident runbooks and their triage queries |
+| `security/policy_suite.py` | chapter 15: the policy test suite — principals, engines, operations, expected outcomes |
+| `dr/` | chapter 16: the game day (`game_day.py <ns> [--replica]`) and the copy-order drill (`replicate.py`) |
+| `cost/cost_model.py` | chapter 18: the eight cost lines, populated from the book's counts and your prices |

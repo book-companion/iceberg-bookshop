@@ -10,3 +10,5 @@ __pycache__/
 book-2/flink/lib/*.jar
 book-2/fixture-catalog/
 book-2/connect/plugins/
+book-2/dr/dr-catalog.db
+book-2/**/__pycache__/
