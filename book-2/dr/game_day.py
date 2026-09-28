@@ -27,20 +27,32 @@ def state(cat, ident):
     return {"rows": len(t.scan().to_arrow()), "snapshots": len(t.metadata.snapshots), "refs": refs, "fields": len(t.schema().fields)}
 
 
-def choose_metadata(s3, bucket, prefix):
-    """The head of the metadata-log chain: the file no other file names as its predecessor."""
+def choose_metadata(s3, bucket, prefix, recorded=None):
+    """Which metadata file to register (ch16, game-day step 4).
+
+    The pointer recorded in the catalog backup wins when it is given and present on this store.
+    Otherwise take a head of the metadata-log chain (a file no other file names as its predecessor).
+    A failed commit's stray also has no successor, so more than one head is possible: prefer the one
+    with the newest last-updated-ms, warn, and check the choice against the backup before trusting it.
+    Never simply the newest by name."""
     files = sorted(k for k in keys(s3, bucket, prefix + "metadata/") if k.endswith(".metadata.json"))
-    named = set()
+    if not files:
+        raise FileNotFoundError(f"no metadata files under {prefix}metadata/ on this store — the table was never replicated here")
+    if recorded:
+        key = recorded.split(f"{bucket}/", 1)[-1]
+        if key in files:
+            return key
+        print(f"     WARNING: the recorded pointer {key.rsplit('/',1)[-1][:12]} is not on this store; falling back to the chain")
+    named, updated = set(), {}
     for k in files:
         mj = json.loads(s3.get_object(Bucket=bucket, Key=k)["Body"].read())
+        updated[k] = mj.get("last-updated-ms", 0)
         for e in mj.get("metadata-log", []):
             named.add(e["metadata-file"].split(f"{bucket}/", 1)[-1])
     heads = [k for k in files if k not in named]
     if len(heads) > 1:
-        print(f"     WARNING: {len(heads)} unreferenced metadata files under {prefix} — one is a failed commit's stray: {[h.rsplit('/',1)[-1][:12] for h in heads]}")
-    if not files:
-        raise FileNotFoundError(f"no metadata files under {prefix}metadata/ on this store — the table was never replicated here")
-    return sorted(heads)[0] if heads else files[-1]
+        print(f"     WARNING: {len(heads)} unreferenced metadata files under {prefix} — one may be a failed commit's stray: {[h.rsplit('/',1)[-1][:12] for h in heads]}")
+    return max(heads, key=lambda k: (updated[k], k)) if heads else files[-1]
 
 
 def referenced_missing(s3, bucket, t):

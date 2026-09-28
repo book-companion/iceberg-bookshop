@@ -27,7 +27,7 @@ gb_month = arg("--storage-price", 0.023)
 transfer_gb = arg("--transfer-price", 0.02)
 
 # --- measurements from the book
-commit_requests, commit_puts = 7, 3              # ch2: one commit = 1 PUT data, 2 PUT metadata, 2 GET metadata, 2 HEAD
+commit_requests, commit_puts = 9, 5              # ch18: 6 per commit (2 PUT, 2 GET, 2 HEAD metadata) + 1 PUT per data file; a streaming checkpoint writes 3 (ch11)
 compaction_puts, compaction_mb, compaction_s = 30, 8.5, 1.0     # ch8, on the 150-file streaming-shaped table
 gets_saved_per_customer_query = 450 - 100        # ch8
 load_kb_per_snapshot = 0.93                      # ch9

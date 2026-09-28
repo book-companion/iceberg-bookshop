@@ -7,7 +7,7 @@ subtraction is the detector for four of the eight.
 | Incident | Detect | Triage | Contain | Recover | Keep |
 |---|---|---|---|---|---|
 | stray metadata file | store listing minus `metadata_log_entries` | nothing points at it | nothing | scheduled orphan cleanup | the listing |
-| data file gone | first column read fails; `count(*)` does not | `all_entries` for the path: added in which snapshot | list every file the same rule removed | rollback if a prior snapshot exists; else tag, replica or source | the error, the listing, the snapshot id |
+| data file gone | first column read fails; `count(*)` does not | `all_entries` for the path: added in which snapshot | list every file the same rule removed | rollback if a prior snapshot exists; else replica or source (a tag or branch references the same deleted file) | the error, the listing, the snapshot id |
 | accidental overwrite | row count; `overwrite` in the snapshot log | the previous snapshot id | stop the writers before the window closes | `rollback_to_snapshot`, 0.1 s | the return row's two pointers |
 | dropped column | column unresolvable; a re-add reads null | field ids; the pre-drop snapshot | stop writers carrying the old field | `INSERT OVERWRITE … FROM t VERSION AS OF <pre-drop>` | the field-id listing |
 | stale pointer | pointer version vs newest file | metadata-log length | block writes: a write forks the history | `register_table` at the newest file | both forked files |
