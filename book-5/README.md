@@ -52,3 +52,18 @@ To use it, copy `terraform/terraform.tfvars.example` to `terraform.tfvars` and p
 ## Compatibility workbook
 
 Each row records what AWS's documentation, or in a few marked rows an AWS blog post, said on 28 September 2026 about one engine and one capability. The `evidence` column is `documented`, `aws-blog` or `UNCONFIRMED`. A row is a claim until you run it. When you do, fill in `last_run` with the date and engine version, and put what happened in `last_run_result`.
+
+## Scripts the chapters print
+
+Run from `book-5/`. None of them contacts AWS.
+
+| Script | Chapter | What it checks |
+|---|---|---|
+| `scripts/names.py` | 3 | table-bucket, namespace and table names against the documented rules; URL-encoded prefixes |
+| `scripts/roles.py` | 4 | the four roles' action lists, read from `terraform/iam.tf` |
+| `scripts/lint_catalog.py` | 5 | PyIceberg catalog properties for the two REST endpoints, without sending a request |
+| `scripts/v3_refusal.py` | 5 | PyIceberg 0.11.1's refusal to write a v3 table |
+| `scripts/preflight_ingest.py`, `scripts/file_size_cost.py` | 6 | Firehose's documented table prerequisites; per-object charges by file size |
+| `scripts/preflight_maint.py` | 7 | table properties and refs that stop managed snapshot management |
+| `cost/workloads/*.json` | 2, 7, 9, 10 | the variant workloads the chapters price with `cost/s3_tables_cost.py` |
+| `terraform/replication.tf` | 8 | a replication configuration (validated, never applied) |
