@@ -1,0 +1,22 @@
+{
+  "name": "bookshop (illustrative: one table bucket, the orders and events tables)",
+  "_note": "Illustrative volumes chosen for the arithmetic, not measured on AWS. Replace every number with your own before trusting the total. Replication and S3 Metadata lines print only when their counts are non-zero; a replica's destination storage, monitoring, PUTs and inter-Region transfer are not modelled.",
+  "stored_gb": 2048,
+  "objects_stored": 400000,
+  "put_requests": 3000000,
+  "get_requests": 40000000,
+  "compaction": [
+    {
+      "strategy": "binpack",
+      "objects_processed": 250000,
+      "gb_processed": 600
+    },
+    {
+      "strategy": "sort",
+      "objects_processed": 20000,
+      "gb_processed": 120
+    }
+  ],
+  "replicated_table_updates": 0,
+  "metadata_journal_updates": 0
+}

@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and replace the placeholder account ID.
+region            = "us-east-1"
+table_bucket_name = "bookshop-tables"
+namespace         = "bookshop"
+
+trusted_principal_arns = {
+  reader      = ["arn:aws:iam::111122223333:role/analyst"]
+  writer      = ["arn:aws:iam::111122223333:role/ingest-job"]
+  maintenance = ["arn:aws:iam::111122223333:role/platform-oncall"]
+  admin       = ["arn:aws:iam::111122223333:role/platform-admin"]
+}

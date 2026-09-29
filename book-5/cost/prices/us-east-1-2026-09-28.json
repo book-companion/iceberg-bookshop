@@ -1,0 +1,33 @@
+{
+  "region": "us-east-1",
+  "fetched": "2026-09-28",
+  "currency": "USD",
+  "_sources": {
+    "offer_file": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json",
+    "offer_file_version": "20260928230416",
+    "pricing_page": "https://aws.amazon.com/s3/pricing/",
+    "_note": "The pricing page renders its tables with JavaScript and sets its worked S3 Tables example in US West (Oregon), so the US East (N. Virginia) figures were read from AWS's Price List offer file. Where the page's worked examples print the same figure, both are cited. List prices only: no Free Tier, taxes, data transfer or engine charges."
+  },
+  "dimensions": {
+    "storage_gb_month": {
+      "unit": "GB-month, S3 Tables Standard, cumulative tiers",
+      "tiers": [
+        {"up_to_gb": 51200, "usd": 0.0265, "source": "offer_file", "quote": "$0.0265 per GB-Mo for First 50 TB of Storage in S3 Table Buckets"},
+        {"up_to_gb": 512000, "usd": 0.0253, "source": "offer_file", "quote": "$0.0253 per GB-Mo for Next 450 TB of Storage in S3 Table Buckets"},
+        {"up_to_gb": null, "usd": 0.0242, "source": "offer_file", "quote": "$0.0242 per GB-Mo for Over 500 TB of Storage in S3 Table Buckets"}
+      ]
+    },
+    "put_per_1000_requests": {"usd": 0.005, "source": "offer_file", "quote": "$0.005 per 1,000 PUT Requests/COPY/POST or LIST Requests to S3 Table Buckets"},
+    "get_per_1000_requests": {"usd": 0.0004, "source": "offer_file", "quote": "$0.0004 per 1,000 GET and All Other Requests to S3 Table Buckets"},
+    "monitoring_per_1000_objects": {"usd": 0.025, "source": "offer_file", "quote": "$0.025 per 1,000 objects per month monitoring fee"},
+    "compaction_binpack_per_1000_objects": {"usd": 0.002, "source": "offer_file", "quote": "$0.002 per 1,000 objects compacted in S3 Table Buckets"},
+    "compaction_binpack_per_gb": {"usd": 0.005, "source": "offer_file", "quote": "$0.005 per GB fee for bytes processed for compaction"},
+    "compaction_sort_per_1000_objects": {"usd": 0.002, "source": "offer_file", "quote": "$0.002 per 1,000 objects compacted with sort or Z-order"},
+    "compaction_sort_per_gb": {"usd": 0.01, "source": "offer_file", "quote": "$0.01 per GB fee for bytes processed for sort or Z-order compaction"},
+    "compaction_zorder_per_1000_objects": {"usd": 0.002, "source": "offer_file", "quote": "$0.002 per 1,000 objects compacted with sort or Z-order"},
+    "compaction_zorder_per_gb": {"usd": 0.01, "source": "offer_file", "quote": "$0.01 per GB fee for bytes processed for sort or Z-order compaction"},
+    "replication_per_1000_table_updates": {"usd": 0.01, "source": "offer_file", "quote": "$0.01 per 1,000 table updates for tables replicated in S3 table buckets"},
+    "metadata_journal_per_million_updates": {"usd": 0.30, "source": "offer_file", "quote": "$0.30 per 1 million updates processed for S3 Metadata"},
+    "metadata_table_storage_gb_month": {"usd": null, "note": "UNCONFIRMED: no AWS page found stating journal or inventory table storage is billed at S3 Tables rates"}
+  }
+}

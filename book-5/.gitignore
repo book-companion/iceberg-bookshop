@@ -1,0 +1,6 @@
+# Terraform working state: provider binaries, state and real variable values never belong here.
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+__pycache__/
