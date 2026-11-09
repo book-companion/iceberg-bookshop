@@ -129,8 +129,8 @@ using this pattern with sensitive data.
 ## Desktop REST and Spark profile
 
 Start the shared platform once from `book-2/`; do not run its `down` or `clean`
-targets while either book's lab uses it. The 64 GiB desktop brief allocates
-10 CPUs and 32 GiB to Docker while Spark runs on the host. Measure actual use;
+targets while another exercise uses it. Give Docker about 10 CPUs and 32 GiB
+while Spark runs on the host; the platform has failed to start under far less. Measure actual use;
 run timing experiments without unrelated engines competing for the same CPUs.
 
 Provide configuration through your shell or a secret manager. No credential file
@@ -198,9 +198,8 @@ failed attempts and missing delivery and refuses unscored releases.
 | 11–14 | `health.py`, `health_pack_bridge.py`, `health_cases.py`, `operations.py`, `planning.py`, `workflow.py`, `publication.py`, `incident_cases.py`, `assistance.py` |
 | 15–18 | refusal/contract tests, `agent.py`, `evaluation.py`, public `probes.py` and `failure_drills.py` |
 
-The private lab is `iceberg-agents-verify/` in the author's verification repository.
-It records version manifests and per-stage output. Run history belongs there;
-this public companion contains authored fixtures, implementations and assertions.
+Run history is not kept in this repository; it holds the fixtures, implementations
+and assertions, and your own results directory holds what they produced when you ran them.
 
 
 ## Complete desktop route
