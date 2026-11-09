@@ -1,0 +1,17 @@
+{
+  "source_identity": "TO_CAPTURE",
+  "logical_boundary": "TO_ESTABLISH",
+  "selected_pattern": null,
+  "logical_reader_qualified": false,
+  "source_can_continue_writing": null,
+  "shared_files_have_coordinated_retention": false,
+  "target_owns_independent_copy": false,
+  "change_capture_boundary_proven": false,
+  "source_history_required": null,
+  "consumer_freeze_window": "TO_AGREE",
+  "recovery_before_target_writes": "TO_REHEARSE",
+  "recovery_after_target_writes": "TO_REHEARSE",
+  "rejected_alternatives_and_reasons": [],
+  "decision_owner": "TO_CONFIRM",
+  "status": "authored decision template, not approval"
+}

@@ -1,0 +1,14 @@
+{
+  "grain": "one current row per order_id",
+  "key": [
+    "order_id"
+  ],
+  "currency": "USD",
+  "money": "signed-64-bit integer cents; no floating conversion",
+  "timestamp": "ordered_at is an instant with required offset; normalize to UTC",
+  "nulls": "required pilot fields reject null rather than fill with zero",
+  "extra_fields": "require an explicit mapping version",
+  "partition_proposal": "days(ordered_at), subject to workload measurements",
+  "sort_proposal": "candidate tenant/order_id ordering; qualify separately",
+  "history": "current-state rewrite starts new Iceberg history"
+}

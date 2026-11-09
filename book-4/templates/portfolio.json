@@ -1,0 +1,22 @@
+[
+  {
+    "table": "orders",
+    "owner": "data-platform",
+    "consumer_owner": "finance",
+    "recovery_owner": "data-platform",
+    "source_boundary": "TO_CAPTURE",
+    "benefit": 5,
+    "complexity": 2,
+    "evidence": {}
+  },
+  {
+    "table": "returns",
+    "owner": null,
+    "consumer_owner": "finance",
+    "recovery_owner": null,
+    "source_boundary": null,
+    "benefit": 9,
+    "complexity": 3,
+    "evidence": {}
+  }
+]

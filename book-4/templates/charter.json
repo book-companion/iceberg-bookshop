@@ -1,0 +1,19 @@
+{
+  "pilot": "September bookshop reporting",
+  "source_owner": "TO_CONFIRM",
+  "consumer_owner": "TO_CONFIRM",
+  "stop_authority": "TO_CONFIRM",
+  "goal": "Serve the approved September report from an independently owned Iceberg copy",
+  "acceptance": [
+    "exact keyed rows at one declared boundary",
+    "four representative report results match",
+    "valid allowed/denied identity controls",
+    "writer handoff and applicable recovery demonstrated"
+  ],
+  "non_goals": [
+    "move transactional checkout writes",
+    "preserve source-native history automatically"
+  ],
+  "time_and_cost_targets": "Set from measured baseline before conversion",
+  "status": "authored template, not approved"
+}

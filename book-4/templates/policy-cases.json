@@ -1,0 +1,20 @@
+[
+  {
+    "case_id": "analyst-read",
+    "identity": "restricted_reader",
+    "path": "PyIceberg REST",
+    "outcome": "allowed"
+  },
+  {
+    "case_id": "outside-scope",
+    "identity": "restricted_reader",
+    "path": "PyIceberg REST forbidden control",
+    "outcome": "denied"
+  },
+  {
+    "case_id": "source-report",
+    "identity": "source_reporter",
+    "path": "PostgreSQL report view",
+    "outcome": "allowed"
+  }
+]

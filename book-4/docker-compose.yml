@@ -1,0 +1,33 @@
+name: migration
+services:
+  warehouse:
+    image: postgres:18
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      POSTGRES_DB: sqlverify
+      POSTGRES_USER: migration
+      POSTGRES_PASSWORD: ${MIGR_POSTGRES_PASSWORD:?Set a local source password privately}
+    ports:
+      - "127.0.0.1:5544:5432"
+    volumes:
+      - warehouse-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U migration -d sqlverify"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  metastore:
+    image: apache/hive:4.1.0
+    profiles: ["hive"]
+    environment:
+      SERVICE_NAME: metastore
+    ports:
+      - "127.0.0.1:19083:9083"
+    volumes:
+      - type: bind
+        source: ${MIGR_HIVE_WORKSPACE:-./work}
+        target: ${MIGR_HIVE_WORKSPACE:-/migration-work}
+# The Derby-backed metastore is disposable. Source files are created by the host
+# Spark probe; this project never mounts or cleans the Book 2 warehouse.
+volumes:
+  warehouse-data:
