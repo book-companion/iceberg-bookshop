@@ -1,10 +1,12 @@
 # The Apache Iceberg Migration Playbook — companion draft
 
 The sixteen chapters use one small bookshop pilot, then alternative source
-routes and a common validation/cutover path. **All new runtime experiments are
-unrun.** This is authored code for desktop verification, not a certified migration
-product. No captured outputs, benchmark winners or source-format compatibility
-results are supplied as if they had been observed.
+routes and a common validation/cutover path. The test suite (`make test`, 12 tests)
+and the local probes (`pilot`, `raw`, `boundary`, `cutover`) pass on macOS with
+Python 3.13.5; the pilot reconciles eight orders to 39,000 cents. **The platform,
+source-route and Spark experiments are unrun**: Hive, Delta, Hudi, XTable,
+PostgreSQL, live CDC, the REST target and the layout benchmark. No benchmark winner
+or source-format compatibility result is supplied as if it had been observed.
 
 ## First pilot
 

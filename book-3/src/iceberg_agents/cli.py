@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from .contracts import MetricRequest, canonical
+from .contracts import Refused, MetricRequest, canonical
 
 
 def load(path: Path):
@@ -13,6 +13,15 @@ def load(path: Path):
 
 
 def main():
+    """Print one JSON document: the result, or a refusal envelope with exit code 1."""
+    try:
+        return run()
+    except Refused as refusal:
+        print(canonical({"status": "refused", "code": refusal.code, "detail": str(refusal)}))
+        return 1
+
+
+def run():
     parser = argparse.ArgumentParser(description="Bookshop governed-data companion")
     parser.add_argument("--work", type=Path, default=Path("work"))
     commands = parser.add_subparsers(dest="command", required=True)

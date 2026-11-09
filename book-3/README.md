@@ -1,9 +1,11 @@
-# Data Agents on Apache Iceberg — companion draft
+# Data Agents on Apache Iceberg — companion
 
-This directory implements the examples for the 18-chapter book. It is a draft
-for desktop verification. The source and assertions are authored; **no new lab,
-model evaluation, catalog-policy test or Spark workflow has been executed for
-this draft**. Expected fixture values are not captured results.
+This directory implements the examples for the 18-chapter book. The local test
+suite (`make test`, 43 tests on real local Iceberg tables), the MCP protocol probe
+and the failure drills pass on macOS with Python 3.13.5; the finance and north
+receipts return 39,000 and 21,000 cents and the `outsider` principal is refused.
+**No model evaluation, catalog-policy test or Spark workflow has been executed yet**;
+those need the Book 2 platform and an approved model.
 
 The existing `book-1` and `book-2` environments are unchanged. This book has its
 own virtual environment so its MCP and Agent SDK dependencies do not replace

@@ -6,7 +6,10 @@ services:
     environment:
       POSTGRES_DB: sqlverify
       POSTGRES_USER: migration
-      POSTGRES_PASSWORD: ${MIGR_POSTGRES_PASSWORD:?Set a local source password privately}
+      # Supplied privately; the postgres image refuses to initialise with an empty
+      # password, so the warehouse still cannot start without it, while a
+      # metastore-only start (--profile hive up metastore) needs no password.
+      POSTGRES_PASSWORD: ${MIGR_POSTGRES_PASSWORD:-}
     ports:
       - "127.0.0.1:5544:5432"
     volumes:
